@@ -6,7 +6,17 @@ import (
     "os"
     "bufio"
     "strings"
+    "time"
+    "encoding/json"
+    "strconv"
 )
+
+type Response struct {
+    Timestamp string `json:timestamp`
+    Message string `json:message`
+}
+
+
 
 /* A Simple function to verify error */
 func CheckError(err error) {
@@ -31,19 +41,36 @@ func main() {
     for {
         n,addr,err := ServerConn.ReadFromUDP(buf)
         if err != nil {
-            fmt.Println("Error: ",err)
+            fmt.Println("ERROR: ", err)
         }
 
         scanner := bufio.NewScanner(strings.NewReader(string(buf[0:n])))
-        if err := scanner.Err(); err != nil {
-            fmt.Fprintln(os.Stderr, "error:", err)
-            os.Exit(1)
+        if err != nil {
+            fmt.Println("ERROR: ", err)
         }
 
         scanner.Scan()
+        if err != nil {
+            fmt.Println("ERROR: ", err)
+        }
 
         ucl := strings.SplitAfter(scanner.Text(), "]")
 
-        fmt.Println(ucl, addr)
+        t, err := time.Parse("[02/01/2006 15:04]", ucl[0])
+        if err != nil {
+            fmt.Println("ERROR: ", err)
+        }
+
+
+
+        g, _ := json.Marshal(Response{
+            Timestamp: strconv.FormatInt(t.Unix(), 10),
+            Message: ucl[1],
+        })
+        if err != nil {
+            fmt.Println("ERROR: ", err)
+        }
+
+        fmt.Println(string(g), addr)
     }
 }
