@@ -3,7 +3,6 @@ package main
 import (
     "fmt"
     "net"
-    "os"
     "bufio"
     "strings"
     "time"
@@ -16,61 +15,78 @@ type Response struct {
     Message string `json:message`
 }
 
+func JsonMarshal(tstp string, msg string) string {
 
-
-/* A Simple function to verify error */
-func CheckError(err error) {
-    if err  != nil {
-        fmt.Println("Error: " , err)
-        os.Exit(0)
+    g, err := json.Marshal(Response{
+        Timestamp: tstp,
+        Message: msg,
+    })
+    if err != nil {
+        fmt.Println("ERROR: ", err)
     }
+
+    jsonstr := string(g)
+
+    return jsonstr
+}
+
+func timeParseToUnix(timestr string) string {
+
+    t, err := time.Parse("[02/01/2006 15:04]", timestr)
+    if err != nil {
+        fmt.Println("ERROR: ", err)
+    }
+
+    unixtimestamp := strconv.FormatInt(t.Unix(), 10)
+
+    return unixtimestamp
+}
+
+func scanPacket( buf []byte, n int) []string {
+
+    scanner := bufio.NewScanner(strings.NewReader(string(buf[0:n])))
+    if err := scanner.Err(); err != nil {
+        fmt.Println("ERROR: ", err)
+    }
+
+    scanner.Scan()
+    if err := scanner.Err(); err != nil {
+        fmt.Println("ERROR: ", err)
+    }
+
+    fields := strings.SplitAfter(scanner.Text(), "]")
+    if err := scanner.Err(); err != nil {
+        fmt.Println("ERROR: ", err)
+    }
+
+    return fields
 }
 
 func main() {
+    
+    buf := make([]byte, 65536) /* size of UDP single UDP datagram */
+
     /* Lets prepare a address at any address at port 10001*/
     ServerAddr,err := net.ResolveUDPAddr("udp",":1234")
-    CheckError(err)
+    if err != nil {
+        fmt.Println("ERROR: ", err)
+    }
 
     /* Now listen at selected port */
     ServerConn, err := net.ListenUDP("udp", ServerAddr)
-    CheckError(err)
+    if err != nil {
+        fmt.Println("ERROR: ", err)
+    }
     defer ServerConn.Close()
 
-    buf := make([]byte, 1024)
-
     for {
-        n,addr,err := ServerConn.ReadFromUDP(buf)
+        n,_,err := ServerConn.ReadFromUDP(buf)
         if err != nil {
             fmt.Println("ERROR: ", err)
         }
 
-        scanner := bufio.NewScanner(strings.NewReader(string(buf[0:n])))
-        if err != nil {
-            fmt.Println("ERROR: ", err)
-        }
-
-        scanner.Scan()
-        if err != nil {
-            fmt.Println("ERROR: ", err)
-        }
-
-        ucl := strings.SplitAfter(scanner.Text(), "]")
-
-        t, err := time.Parse("[02/01/2006 15:04]", ucl[0])
-        if err != nil {
-            fmt.Println("ERROR: ", err)
-        }
-
-
-
-        g, _ := json.Marshal(Response{
-            Timestamp: strconv.FormatInt(t.Unix(), 10),
-            Message: ucl[1],
-        })
-        if err != nil {
-            fmt.Println("ERROR: ", err)
-        }
-
-        fmt.Println(string(g), addr)
+        fields := scanPacket(buf, n)
+        timestamp := timeParseToUnix(fields[0])
+        fmt.Println(JsonMarshal(timestamp,fields[1]))
     }
 }
