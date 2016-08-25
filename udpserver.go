@@ -30,7 +30,7 @@ func JsonMarshal(tstp string, msg string) string {
     return jsonstr
 }
 
-func timeParseToUnix(timestr string) string {
+func TimeParseToUnix(timestr string) string {
 
     t, err := time.Parse("[02/01/2006 15:04]", timestr)
     if err != nil {
@@ -42,7 +42,7 @@ func timeParseToUnix(timestr string) string {
     return unixtimestamp
 }
 
-func scanPacket( buf []byte, n int) []string {
+func ScanPacket( buf []byte, n int) []string {
 
     scanner := bufio.NewScanner(strings.NewReader(string(buf[0:n])))
     if err := scanner.Err(); err != nil {
@@ -63,7 +63,7 @@ func scanPacket( buf []byte, n int) []string {
 }
 
 func main() {
-    
+
     buf := make([]byte, 65536) /* size of UDP single UDP datagram */
 
     /* Lets prepare a address at any address at port 10001*/
@@ -85,8 +85,8 @@ func main() {
             fmt.Println("ERROR: ", err)
         }
 
-        fields := scanPacket(buf, n)
-        timestamp := timeParseToUnix(fields[0])
+        fields := ScanPacket(buf, n)
+        timestamp := TimeParseToUnix(fields[0])
         fmt.Println(JsonMarshal(timestamp,fields[1]))
     }
 }
